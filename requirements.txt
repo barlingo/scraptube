@@ -1,0 +1,11 @@
+beautifulsoup4==4.9.0
+certifi==2020.4.5.1
+chardet==3.0.4
+ffmpeg==1.4
+idna==2.9
+pytube3==9.6.4
+requests==2.23.0
+soupsieve==2.0
+typing-extensions==3.7.4.2
+urllib3==1.25.9
+youtube-search==0.1.3
