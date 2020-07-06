@@ -1,37 +1,50 @@
-#!./venv/bin/python3
+"""
+Scraptube
+"""
 import pytube
 
+BASE_URL = "https://youtube.com"
 
-class SourceVideo(object):
-    youtube_url = "http://youtube.com/watch?v"
+
+class SourceVideo():
+    """
+    SourceVideo class.
+    """
+    youtube_url = BASE_URL + "/watch?v"
     counter = 0
     default_path = "./output"
 
-    def __init__(self, video_id, file_ext="mp4", resolution="360p",
-                 language="en", path=default_path):
+    def __init__(self, video_id, path=default_path, extension="mp4"):
         type(self).counter += 1
-
-        self.id = video_id
-        self.resolution = resolution
-        self.extension = file_ext
-        self.link = "{}={}".format(self.youtube_url, self.id)
+        self.video_id = video_id
+        self.extension = extension
+        self.link = "{}={}".format(self.youtube_url, self.video_id)
         self.source = pytube.YouTube(self.link)
-
+        self.download_path = path + "/sv_" + self.video_id + "." + self.extension
         # Can be none easily should add a unit test
-        self.stream = self.source.streams.filter(
-            file_extension=file_ext).get_by_resolution(resolution)
+        self.stream = self.source.streams.first()
 
         self.title = self.stream.title
         self.filesize = self.stream.filesize
-        self.captions = self.source.captions[language].generate_srt_captions()
 
     def __str__(self):
-        return ("id = {}\ntitle = {}\nresolution = {}\nfile extension = {}\n"
-                "size = {}MB\nurl = {}\n"
-                ).format(self.id, self.title, self.resolution, self.extension,
-                         round(self.filesize * 1e-6, 2), self.link)
+        size = round(self.filesize * 1e-6, 2)
+        return """id = {self.video_id} title = {self.title}
+                size = {size}MB url = {self.link}"""
+
+    @staticmethod
+    def get_sec(time_str):
+        """
+        Get time in seconds from hh:mm:ss format.
+        """
+        hours, minutes, seconds = time_str.split(':')
+        total_s = float(hours) * 3600 + float(minutes) * 60 + \
+            float(seconds.replace(',', '.'))
+        return total_s
 
     def download(self, path=default_path):
+        """
+        Downloads stream to selected folder.
+        """
         self.stream.download(
-            output_path=path, filename=self.id, filename_prefix='sv_')
-        self.download_path = path + "/sv_" + self.id + "." + self.extension
+            output_path=path, filename=self.video_id, filename_prefix='sv_')

@@ -29,11 +29,11 @@ class exrxSpyder(scrapy.Spider):
             yield scrapy.Request(url, callback=self.parse_exercises)
 
     def parse_exercises(self, response):
-
         loader = ItemLoader(item=exrxItem(), selector=response)
-
         loader.add_xpath('video_url',
+
                          "//video/source/@src")
+
         loader.add_xpath('exercise',
                          "//h1[@class='page-title']")
         loader.add_xpath('main_muscle',
