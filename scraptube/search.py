@@ -1,18 +1,19 @@
 #!./venv/bin/python3
 import urllib.parse
-import requests
+from random import randint
+import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
-import time
-from random import randint
 
 
 class YoutubeSearch:
 
-    def __init__(self, search_terms, max_results=None):
+    def __init__(self, search_terms, max_results=None, max_scroll=100):
         self.search_terms = search_terms
+        self.max_scroll = max_scroll
         self.max_results = max_results
         self.videos = self.search()
+        self.count = len(self.videos)
 
     def search(self):
 
@@ -47,7 +48,7 @@ class YoutubeSearch:
         driver = webdriver.Firefox()
         driver.get(url)
         time.sleep(randint(1, 3))
-        for _ in range(0, 100):
+        for _ in range(0, self.max_scroll):
             driver.execute_script(command)
             time.sleep(randint(1, 3))
 

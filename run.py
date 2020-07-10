@@ -2,35 +2,42 @@
 """
 Run python module
 """
-import concurrent.futures
+import argparse
 from scraptube import vedit
-from scraptube import tubedown
 from scraptube import search
+from scraptube import tubedown
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", "--search", type=str,
+                    help="Performs search on yt")
+parser.add_argument("-a", "--added_search", type=str,
+                    help="Added arguments to main search query add + for each")
+parser.add_argument("-d", "--download", action="store_true",
+                    help="Downloads videos from query result ")
+parser.add_argument("-f", "--format", type=int,
+                    help="Format videos into chucks of N seconds")
+parser.add_argument("-c", "--clean", action="store_true",
+                    help="Performs data clean of ./output folders")
+args = parser.parse_args()
 
 
-def download_videos(youtube_id):
-    try:
-        video = tubedown.SourceVideo(youtube_id)
-        video.download(path=PATH)
-        print(f'Downloaded video with id {youtube_id}')
-    except:
-        print(f'Unable to download {youtube_id}')
+if args.search is not None:
+    PATH = './output/' + args.search
+    query = args.search + ", " + args.added_search
+    yt_search = search.YoutubeSearch(query)
+    youtube_ids = yt_search.to_list()
+    print(f'Found {yt_search.count} youtube videos for {args.search}, \
+          {args.added_search}')
 
+if args.download:
+    print("Starting download...")
+    extractor = tubedown.extractVideos(PATH, youtube_ids)
+    extractor.parallel_download()
+    extractor.merge_logs(args.search)
+    extractor.purge_logs()
 
-EXERCISE = 'deadlift'
-QUERY = EXERCISE + ' ,+exercise +routine +fitness'
-PATH = './output/' + EXERCISE
-youtube_ids = search.YoutubeSearch(QUERY).to_list()
-
-number_of_videos = len(youtube_ids)
-
-print(f'Found {number_of_videos} youtube videos, starting download...')
-
-with concurrent.futures.ThreadPoolExecutor() as executor:
-    executor.map(download_videos, youtube_ids)
-
-# video = tubedown.SourceVideo('rJzIcgVqLvU')
-# print(video.title)
-# video.download()
-# for start, end in zip(video.subs_starts, video.subs_ends):
-#     vedit.VideoSubClip(video.download_path, start, end)
+if args.format:
+    print(f"Trimming videos on {args.format} seconds chunks")
+    PATH = "./output/"
+    _, paths = vedit.list_path(PATH)
+    vedit.process_files(paths[0])
