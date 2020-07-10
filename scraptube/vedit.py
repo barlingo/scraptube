@@ -3,10 +3,104 @@ vedit module
 
 """
 import os
+import tkinter
 from os import walk
 import cv2
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 # import moviepy.editor
+
+import PIL.Image
+import PIL.ImageTk
+import time
+
+
+class App:
+    def __init__(self, window, window_title, video_source=0):
+        self.window = window
+        self.window.title(window_title)
+        self.video_source = video_source
+
+        # open video source (by default this will try to open the computer webcam)
+        self.vid = MyVideoCapture(self.video_source)
+
+        # Create a canvas that can fit the above video source size
+        self.canvas = tkinter.Canvas(
+            window, width=self.vid.width, height=self.vid.height)
+        self.canvas.pack()
+
+        # Button that lets the user take a snapshot
+        self.btn_snapshot = tkinter.Button(
+            window, text="Snapshot", width=50, command=self.snapshot)
+        self.btn_snapshot.pack(anchor=tkinter.CENTER, expand=True)
+
+        # After it is called once, the update method will be automatically called every delay milliseconds
+        self.delay = 15
+        self.update()
+
+        self.window.mainloop()
+
+    def snapshot(self):
+        # Get a frame from the video source
+        ret, frame = self.vid.get_frame()
+
+        if ret:
+            cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") +
+                        ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    def update(self):
+        # Get a frame from the video source
+        ret, frame = self.vid.get_frame()
+
+        if ret:
+            self.photo = PIL.ImageTk.PhotoImage(
+                image=PIL.Image.fromarray(frame))
+            self.canvas.create_image(0, 0, image=self.photo, anchor=tkinter.NW)
+
+        self.window.after(self.delay, self.update)
+
+
+class MyVideoCapture:
+    def __init__(self, video_source=0):
+        # Open the video source
+        self.vid = cv2.VideoCapture(video_source)
+        if not self.vid.isOpened():
+            raise ValueError("Unable to open video source", video_source)
+
+        # Get video source width and height
+        self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+    def get_frame(self):
+        if self.vid.isOpened():
+            ret, frame = self.vid.read()
+            if ret:
+                # Return a boolean success flag and the current frame converted to BGR
+                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            else:
+                return (ret, None)
+        else:
+            return (ret, None)
+
+    # Release the video source when the object is destroyed
+    def __del__(self):
+        if self.vid.isOpened():
+            self.vid.release()
+
+
+# Create a window and pass it to the Application object
+
+
+class InspectClip():
+    def __init__(self, clip_path):
+        self.clip_path = clip_path
+
+    def visualize(self):
+        App(tkinter.Tk(), self.clip_path, self.clip_path)
+
+
+class InspectSubFolder():
+    def __init__(self):
+        pass
 
 
 class Subclip():
@@ -28,7 +122,7 @@ class Subclip():
                                targetname=self.filename)
 
 
-class MainVideoProcessing():
+class MainVideoClipping():
 
     def __init__(self, path):
         self.video_path = path
@@ -50,24 +144,36 @@ class MainVideoProcessing():
 class SubFolderProcessing():
     def __init__(self, subfolder_path):
         self.subfolder_path = subfolder_path
-        self.filenames = self.ls_videos()
+        self.filenames, self.file_paths = self.ls_videos()
         self.total_files = len(self.filenames)
         self.name = os.path.basename(os.path.normpath(self.subfolder_path))
 
-    def process_files(self, step):
-        for filename in self.filenames:
-            if not filename.endswith('.csv'):
-                video_path = f'{self.subfolder_path}/{filename}'
-                video = MainVideoProcessing(video_path)
+    def clip_files(self, step):
+        for file_path in self.file_paths:
+            if not file_path.endswith('.csv'):
+                video = MainVideoClipping(file_path)
                 video.split_into_subclips(step, path=self.subfolder_path)
-                os.remove(video_path)
+                os.remove(file_path)
+        # Require to update list of files
+        self.filenames, self.file_paths = self.ls_videos()
 
     def ls_videos(self):
-        filenames_list = []
-        for (_, _, filenames) in walk(self.subfolder_path):
-            filenames_list.extend(filenames)
+        filenames = []
+        file_paths = []
+        for (_, _, filename) in walk(self.subfolder_path):
+            filenames.extend(filename)
+        for file in filenames:
+            file_path = f'{self.subfolder_path}/{file}'
+            file_paths.append(file_path)
 
-        return filenames_list
+        return filenames, file_paths
+
+    def label_videos(self):
+        for file_path in self.file_paths:
+            if not file_path.endswith('.csv'):
+                clip = InspectClip(file_path)
+                clip.visualize()
+                break
 
 
 class MainFolderProcessing():

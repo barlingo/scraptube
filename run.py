@@ -41,7 +41,9 @@ if args.format:
     print(f"Trimming videos on {args.format} seconds chunks")
     PATH = "./output/push up"
     processor = vedit.SubFolderProcessing(PATH)
-    processor.process_files(args.format)
+    processor.clip_files(args.format)
 
 if args.clean:
-    pass
+    PATH = "./output/push up"
+    processor = vedit.SubFolderProcessing(PATH)
+    processor.label_videos()
