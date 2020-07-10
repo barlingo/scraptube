@@ -18,6 +18,7 @@ parser.add_argument("-f", "--format", type=int,
                     help="Format videos into chucks of N seconds")
 parser.add_argument("-c", "--clean", action="store_true",
                     help="Performs data clean of ./output folders")
+
 args = parser.parse_args()
 
 
@@ -38,6 +39,9 @@ if args.download:
 
 if args.format:
     print(f"Trimming videos on {args.format} seconds chunks")
-    PATH = "./output/"
-    _, paths = vedit.list_path(PATH)
-    vedit.process_files(paths[0])
+    PATH = "./output/push up"
+    processor = vedit.SubFolderProcessing(PATH)
+    processor.process_files(args.format)
+
+if args.clean:
+    pass
