@@ -2,10 +2,12 @@
 vedit module
 
 """
+import shutil
 import os
 import tkinter
 from os import walk
 import cv2
+import re
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 # import moviepy.editor
 
@@ -14,38 +16,80 @@ import PIL.ImageTk
 import time
 
 
-class App:
+class LabelApp:
     def __init__(self, window, window_title, video_source=0):
         self.window = window
         self.window.title(window_title)
         self.video_source = video_source
-
-        # open video source (by default this will try to open the computer webcam)
-        self.vid = MyVideoCapture(self.video_source)
+        self.video_dest = self.video_source.replace('output', 'clean', 1)
+        self.video_query = re.search(
+            './output/(.*?)/(.*?)', self.video_source).group(1)
+        self.vid = VideoCapture(self.video_source)
 
         # Create a canvas that can fit the above video source size
         self.canvas = tkinter.Canvas(
             window, width=self.vid.width, height=self.vid.height)
+        self.window.bind('<KeyPress>', self.on_key_press)
         self.canvas.pack()
 
-        # Button that lets the user take a snapshot
-        self.btn_snapshot = tkinter.Button(
-            window, text="Snapshot", width=50, command=self.snapshot)
-        self.btn_snapshot.pack(anchor=tkinter.CENTER, expand=True)
+        # Buttons to select
+        self.btn_keep = tkinter.Button(
+            window, text="Keep (K)", width=20, command=self.keep_video)
+        self.btn_keep.pack(anchor=tkinter.CENTER, expand=True)
+
+        self.btn_delete = tkinter.Button(
+            window, text="Delete (D)", width=20, command=self.delete_video)
+        self.btn_delete.pack(anchor=tkinter.CENTER, expand=True)
+
+        self.btn_relabel = tkinter.Button(
+            window, text="Relabel (R)", width=20, command=self.relabel_video)
+        self.btn_relabel.pack(anchor=tkinter.CENTER, expand=True)
+
+        self.btn_relabel = tkinter.Button(
+            window, text="Skip (S)", width=20, command=self.skip)
+        self.btn_relabel.pack(anchor=tkinter.CENTER, expand=True)
+
+        self.entry_label = tkinter.Entry(window)
+        self.canvas.create_window(320, 12,  window=self.entry_label)
 
         # After it is called once, the update method will be automatically called every delay milliseconds
         self.delay = 15
         self.update()
-
         self.window.mainloop()
 
-    def snapshot(self):
-        # Get a frame from the video source
-        ret, frame = self.vid.get_frame()
+    def keep_video(self):
+        # Move cleaned file to a different destination
+        os.makedirs(os.path.dirname(self.video_dest), exist_ok=True)
+        shutil.move(self.video_source, self.video_dest)
+        self.window.destroy()
 
-        if ret:
-            cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") +
-                        ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+    def skip(self):
+        self.window.destroy()
+
+    def relabel_video(self):
+        label = self.entry_label.get()
+        if label == '':
+            print("No label entered")
+        else:
+            print(f'Moving file to {label}')
+            self.video_dest = self.video_dest.replace(self.video_query, label)
+            os.makedirs(os.path.dirname(self.video_dest), exist_ok=True)
+            shutil.move(self.video_source, self.video_dest)
+        self.window.destroy()
+
+    def delete_video(self):
+        self.window.destroy()
+        os.remove(self.video_source)
+
+    def on_key_press(self, event):
+        if event.keysym == 'K':
+            self.keep_video()
+        elif event.keysym == 'D':
+            self.delete_video()
+        elif event.keysym == 'R':
+            self.relabel_video()
+        elif event.keysym == 'S':
+            self.skip()
 
     def update(self):
         # Get a frame from the video source
@@ -59,7 +103,7 @@ class App:
         self.window.after(self.delay, self.update)
 
 
-class MyVideoCapture:
+class VideoCapture:
     def __init__(self, video_source=0):
         # Open the video source
         self.vid = cv2.VideoCapture(video_source)
@@ -87,41 +131,6 @@ class MyVideoCapture:
             self.vid.release()
 
 
-# Create a window and pass it to the Application object
-
-
-class InspectClip():
-    def __init__(self, clip_path):
-        self.clip_path = clip_path
-
-    def visualize(self):
-        App(tkinter.Tk(), self.clip_path, self.clip_path)
-
-
-class InspectSubFolder():
-    def __init__(self):
-        pass
-
-
-class Subclip():
-    """
-    VideoSubClip
-    """
-    counter = 0
-    default_path = "./chunks"
-
-    def __init__(self, video_path, start, end, path=default_path,
-                 file_ext='mp4'):
-        type(self).counter += 1
-        self.org_basename = os.path.basename(video_path)
-        self.name = str(type(self).counter) + "_" + \
-            os.path.splitext(self.org_basename)[0]
-        self.filename = path + "/" + self.name + '.' + file_ext
-
-        ffmpeg_extract_subclip(video_path, start, end,
-                               targetname=self.filename)
-
-
 class MainVideoClipping():
 
     def __init__(self, path):
@@ -136,9 +145,17 @@ class MainVideoClipping():
         return fps, seconds, frames
 
     def split_into_subclips(self, step, path):
+        counter = 0
         for start in range(0, int(self.seconds), step):
             end = start + step
-            _ = Subclip(self.video_path, start, end, path)
+            self.extract_clip(counter, start, end, path)
+            counter += 1
+
+    def extract_clip(self, counter, start, end, path):
+        main_name = os.path.basename(self.video_path)
+        name = str(counter) + "_" + os.path.splitext(main_name)[0]
+        targetname = path + "/" + name + '.mp4'
+        ffmpeg_extract_subclip(self.video_path, start, end, targetname)
 
 
 class SubFolderProcessing():
@@ -169,11 +186,13 @@ class SubFolderProcessing():
         return filenames, file_paths
 
     def label_videos(self):
+        count = 0
         for file_path in self.file_paths:
             if not file_path.endswith('.csv'):
-                clip = InspectClip(file_path)
-                clip.visualize()
+                LabelApp(tkinter.Tk(), self.name, file_path)
+            if count == 500:
                 break
+            count += 1
 
 
 class MainFolderProcessing():
