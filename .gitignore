@@ -90,5 +90,6 @@ ENV/
 .ropeproject
 
 # Foldser data
+clean/
 output/
 workout_scrap/datasets/
