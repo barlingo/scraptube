@@ -16,94 +16,200 @@ import PIL.ImageTk
 import time
 
 
+CTRL = {
+    'back': 'H',
+    'fwd': 'L',
+    'jump_back': 'J',
+    'jump_fwd': 'K',
+    'jump_step': 50,
+    'close': 'Q',
+    'pause_play': 'space'
+}
+
+LABELS = {
+    'general': 'E',
+    'relabel': 'R',
+    'label': 'A',
+    'reset': 'C'
+}
+
+
 class LabelApp:
+
     def __init__(self, window, window_title, video_source=0):
         self.window = window
-        self.window.title(window_title)
+        self.main_label = window_title
+        self.window.title(self.main_label)
         self.video_source = video_source
         self.video_dest = self.video_source.replace('output', 'clean', 1)
         self.video_query = re.search(
             './output/(.*?)/(.*?)', self.video_source).group(1)
-        self.vid = VideoCapture(self.video_source)
+        self.cap = VideoCapture(self.video_source)
+        self.pause_flag = True
+        self.label_flag = False
+        self.relabel_flag = False
+        self.gen_label_flag = False
+        self.label_dict = {'video': self.video_source,
+                           'exercise': [],
+                           'start': [],
+                           'end': []}
 
         # Create a canvas that can fit the above video source size
         self.canvas = tkinter.Canvas(
-            window, width=self.vid.width, height=self.vid.height)
+            window, width=self.cap.width, height=self.cap.height)
         self.window.bind('<KeyPress>', self.on_key_press)
+
         self.canvas.pack()
-
         # Buttons to select
-        self.btn_keep = tkinter.Button(
-            window, text="Keep (K)", width=20, command=self.keep_video)
-        self.btn_keep.pack(anchor=tkinter.CENTER, expand=True)
 
-        self.btn_delete = tkinter.Button(
-            window, text="Delete (D)", width=20, command=self.delete_video)
-        self.btn_delete.pack(anchor=tkinter.CENTER, expand=True)
+        self.btn_jmp_fwd = tkinter.Button(window,
+                                          text=f"{CTRL['jump_step']} Forward ({CTRL['jump_fwd']})",
+                                          width=10,
+                                          command=self.video_forward(CTRL['jump_step']))
+        self.btn_jmp_fwd.pack(side=tkinter.RIGHT,
+                              anchor=tkinter.N, expand=True)
 
-        self.btn_relabel = tkinter.Button(
-            window, text="Relabel (R)", width=20, command=self.relabel_video)
-        self.btn_relabel.pack(anchor=tkinter.CENTER, expand=True)
+        self.btn_jmp_back = tkinter.Button(window,
+                                           text=f"{CTRL['jump_step']} Back ({CTRL['jump_back']})",
+                                           width=10,
+                                           command=self.video_backward(CTRL['jump_step']))
+        self.btn_jmp_back.pack(
+            side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
 
-        self.btn_relabel = tkinter.Button(
-            window, text="Skip (S)", width=20, command=self.skip)
-        self.btn_relabel.pack(anchor=tkinter.CENTER, expand=True)
+        self.btn_fwd = tkinter.Button(window, text=f"1 Forward ({CTRL['fwd']})",
+                                      width=10,
+                                      command=self.video_forward(1))
+        self.btn_fwd.pack(side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
+
+        self.btn_back = tkinter.Button(window,
+                                       text=f"1 Back ({CTRL['back']})",
+                                       width=10,
+                                       command=self.video_backward(1))
+        self.btn_back.pack(side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
+
+        self.btn_pause_play = tkinter.Button(window,
+                                             text=f"Pause/Play ({CTRL['pause_play']})",
+                                             width=15,
+                                             command=self.video_pause())
+        self.btn_pause_play.pack(
+            side=tkinter.RIGHT, anchor=tkinter.CENTER, expand=True)
 
         self.entry_label = tkinter.Entry(window)
         self.canvas.create_window(320, 12,  window=self.entry_label)
 
         # After it is called once, the update method will be automatically called every delay milliseconds
         self.delay = 15
-        self.update()
+        self.update_video()
+        print("reachead maind loop")
         self.window.mainloop()
 
-    def keep_video(self):
-        # Move cleaned file to a different destination
-        os.makedirs(os.path.dirname(self.video_dest), exist_ok=True)
-        shutil.move(self.video_source, self.video_dest)
-        self.window.destroy()
-
-    def skip(self):
-        self.window.destroy()
-
-    def relabel_video(self):
-        label = self.entry_label.get()
-        if label == '':
-            print("No label entered")
-        else:
-            print(f'Moving file to {label}')
-            self.video_dest = self.video_dest.replace(self.video_query, label)
-            os.makedirs(os.path.dirname(self.video_dest), exist_ok=True)
-            shutil.move(self.video_source, self.video_dest)
-        self.window.destroy()
-
-    def delete_video(self):
-        self.window.destroy()
-        os.remove(self.video_source)
-
     def on_key_press(self, event):
-        if event.keysym == 'K':
-            self.keep_video()
-        elif event.keysym == 'D':
-            self.delete_video()
-        elif event.keysym == 'R':
-            self.relabel_video()
-        elif event.keysym == 'S':
-            self.skip()
+        if event.keysym == CTRL['fwd']:
+            self.video_forward(1)
+        elif event.keysym == CTRL['back']:
+            self.video_backward(1)
+        elif event.keysym == CTRL['jump_fwd']:
+            self.video_forward(CTRL['jump_step'])
+        elif event.keysym == CTRL['jump_back']:
+            self.video_backward(CTRL['jump_step'])
+        elif event.keysym == 'F':
+            self.cap.get_frame_num()
+        elif event.keysym == CTRL['pause_play']:
+            self.video_pause()
+        elif event.keysym == CTRL['close']:
+            self.close()
+        elif event.keysym == LABELS['label']:
+            self.place_label()
+        elif event.keysym == LABELS['relabel']:
+            self.relabel_clip()
+        elif event.keysym == LABELS['general']:
+            self.general_label()
 
-    def update(self):
+    def close(self):
+        print(self.label_dict)
+        self.window.destroy()
+
+    def general_label(self):
+        frame = self.cap.get_frame_num()
+        label = 'general'
+
+        if not self.gen_label_flag:
+            # Create dictionary with end frames marked as the end
+            self.label_dict['exercise'].append(label)
+            self.label_dict['start'].append(frame)
+            print(f"Starting labeling as {label} at frame {frame}.")
+            self.gen_label_flag = True
+        elif self.gen_label_flag:
+            # Overwrites end with new frame number
+            self.label_dict['end'].append(frame)
+            print(f"Ended labeling as {label} at frame {frame}.")
+            self.gen_label_flag = False
+
+    def place_label(self):
+        frame = self.cap.get_frame_num()
+        label = self.main_label
+
+        if not self.label_flag:
+            # Create dictionary with end frames marked as the end
+            self.label_dict['exercise'].append(label)
+            self.label_dict['start'].append(frame)
+            print(f"Starting labeling as {label} at frame {frame}.")
+            self.label_flag = True
+        elif self.label_flag:
+            # Overwrites end with new frame number
+            self.label_dict['end'].append(frame)
+            print(f"Ended labeling as {label} at frame {frame}.")
+            self.label_flag = False
+
+    def relabel_clip(self):
+        frame = self.cap.get_frame_num()
+        label = self.entry_label.get()
+
+        if label == '':
+            print("No new label entered in field.")
+        else:
+            if not self.relabel_flag:
+                self.label_dict['exercise'].append(label)
+                self.label_dict['start'].append(frame)
+                print(f"Starting labeling as {label} at frame {frame}.")
+                self.relabel_flag = True
+            elif self.relabel_flag:
+                self.label_dict['end'].append(frame)
+                print(f"Ended labeling as {label} at frame {frame}.")
+                self.relabel_flag = False
+
+    def update_video(self):
         # Get a frame from the video source
-        ret, frame = self.vid.get_frame()
+        self.update_frame()
 
+        if self.pause_flag:
+            self.window.after(self.delay, self.update_video)
+
+    def update_frame(self):
+        ret, frame = self.cap.get_frame()
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(
                 image=PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image=self.photo, anchor=tkinter.NW)
 
-        self.window.after(self.delay, self.update)
+    def video_pause(self):
+        if self.pause_flag:
+            self.pause_flag = False
+        else:
+            self.pause_flag = True
+            self.window.after(self.delay, self.update_video)
+
+    def video_forward(self, step):
+        self.cap.forward(step - 1)
+        self.update_frame()
+
+    def video_backward(self, step):
+        self.cap.backward(step + 1)
+        self.update_frame()
 
 
-class VideoCapture:
+class VideoCapture():
+
     def __init__(self, video_source=0):
         # Open the video source
         self.vid = cv2.VideoCapture(video_source)
@@ -113,6 +219,7 @@ class VideoCapture:
         # Get video source width and height
         self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.total_frames = int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
 
     def get_frame(self):
         if self.vid.isOpened():
@@ -125,7 +232,28 @@ class VideoCapture:
         else:
             return (ret, None)
 
-    # Release the video source when the object is destroyed
+    def get_frame_num(self):
+        if self.vid.isOpened():
+            frame_num = int(self.vid.get(cv2.CAP_PROP_POS_FRAMES))
+            return frame_num
+        else:
+            return None
+
+    def backward(self, num_frames):
+        if self.vid.isOpened():
+            frame_current = self.get_frame_num()
+            if frame_current:
+                frame_new = frame_current - num_frames
+                self.vid.set(cv2.CAP_PROP_POS_FRAMES, frame_new)
+
+    def forward(self, num_frames):
+        if self.vid.isOpened():
+            frame_current = self.get_frame_num()
+            if frame_current:
+                frame_new = frame_current + num_frames
+                self.vid.set(cv2.CAP_PROP_POS_FRAMES, frame_new)
+
+            # Release the video source when the object is destroyed
     def __del__(self):
         if self.vid.isOpened():
             self.vid.release()

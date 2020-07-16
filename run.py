@@ -37,13 +37,13 @@ if args.download:
     extractor.merge_logs(args.search)
     extractor.purge_logs()
 
-if args.format:
-    print(f"Trimming videos on {args.format} seconds chunks")
-    PATH = "./output/push up"
-    processor = vedit.SubFolderProcessing(PATH)
-    processor.clip_files(args.format)
+# if args.format:
+#     print(f"Trimming videos on {args.format} seconds chunks")
+#     PATH = "./output/push up"
+#     processor = vedit.SubFolderProcessing(PATH)
+#     processor.clip_files(args.format)
 
 if args.clean:
-    PATH = "./output/push up"
+    PATH = "./output/deadlift"
     processor = vedit.SubFolderProcessing(PATH)
     processor.label_videos()
