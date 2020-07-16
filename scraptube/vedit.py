@@ -97,7 +97,8 @@ class LabelApp:
         self.entry_label = tkinter.Entry(window)
         self.canvas.create_window(320, 12,  window=self.entry_label)
 
-        # After it is called once, the update method will be automatically called every delay milliseconds
+        # After it is called once, the update method
+        #  will be automatically called every delay milliseconds
         self.delay = 15
         self.update_video()
         print("reachead maind loop")
@@ -137,7 +138,7 @@ class LabelApp:
             # Create dictionary with end frames marked as the end
             self.label_dict['exercise'].append(label)
             self.label_dict['start'].append(frame)
-            print(f"Starting labeling as {label} at frame {frame}.")
+            print(f"Started labeling as {label} at frame {frame}.")
             self.gen_label_flag = True
         elif self.gen_label_flag:
             # Overwrites end with new frame number

@@ -1,4 +1,0 @@
-- Scrap musclestrenght website.
-- Scrap https://airtable.com/shrKZ9lPpw7EvjZ3X/tblvscpkbagqlWKkH
-- Scrap https://exrx.net/Lists/Directory
-    * See https://stackoverflow.com/questions/39202058/how-to-solve-403-error-in-scrapy
