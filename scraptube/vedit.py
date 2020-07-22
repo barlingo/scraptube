@@ -357,23 +357,23 @@ class SubFolderProcessing():
                 break
 
 
-class MainFolderProcessing():
-
-    def __init__(self, main_path):
-        self.main_folder_path = main_path
-        self.paths = self.ls_subfolders()
-
-    def ls_subfolders(self):
-        filenames_list = []
-        paths_list = []
-        for (dirpath, _, filenames) in walk(self.main_folder_path):
-            filenames_list.extend(filenames)
-            paths_list.append(dirpath)
-
-        paths_list = paths_list[1:]
-        return filenames_list, paths_list
-
-    def process_subfolders(self, step):
-        for subfolder in self.paths:
-            processor = SubFolderProcessing(subfolder)
-            processor.process_files(step)
+# class MainFolderProcessing():
+#
+#     def __init__(self, main_path):
+#         self.main_folder_path = main_path
+#         self.paths = self.ls_subfolders()
+#
+#     def ls_subfolders(self):
+#         filenames_list = []
+#         paths_list = []
+#         for (dirpath, _, filenames) in walk(self.main_folder_path):
+#             filenames_list.extend(filenames)
+#             paths_list.append(dirpath)
+#
+#         paths_list = paths_list[1:]
+#         return filenames_list, paths_list
+#
+#     def process_subfolders(self, step):
+#         for subfolder in self.paths:
+#             processor = SubFolderProcessing(subfolder)
+#             processor.process_files(step)
