@@ -352,9 +352,9 @@ class SubFolderProcessing():
                 json_file = os.path.splitext(file_path)[0] + '.json'
                 if not os.path.isfile(json_file):
                     LabelApp(tkinter.Tk(), self.name, file_path)
+                    count += 1
             if count == 5:
                 break
-            count += 1
 
 
 class MainFolderProcessing():

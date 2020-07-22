@@ -16,8 +16,8 @@ parser.add_argument("-d", "--download", action="store_true",
                     help="Downloads videos from query result ")
 parser.add_argument("-f", "--format", type=int,
                     help="Format videos into chucks of N seconds")
-parser.add_argument("-c", "--clean", action="store_true",
-                    help="Performs data clean of ./output folders")
+parser.add_argument("-c", "--clean", type=str,
+                    help="Performs data clean of specified folder")
 
 args = parser.parse_args()
 
@@ -44,6 +44,5 @@ if args.download:
 #     processor.clip_files(args.format)
 
 if args.clean:
-    PATH = "./output/deadlift"
-    processor = vedit.SubFolderProcessing(PATH)
+    processor = vedit.SubFolderProcessing(args.clean)
     processor.label_videos()
