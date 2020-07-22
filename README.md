@@ -12,5 +12,5 @@
     - -s --search: Main query to be search (Not literal)
     - -a --added-search: Added parameter to be search or excluded. e.g. +exercise -music ...
     - -d --download: Download files to ./output/{main_query} folder
-    - -c --clean: Starts labelling the videos.
+    - -c --clean: Starts labelling the videos on specified folder. e.g. --clean ./output/deadlift
 
