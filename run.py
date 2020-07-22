@@ -27,7 +27,7 @@ if args.search is not None:
     query = args.search + ", " + args.added_search
     yt_search = search.YoutubeSearch(query)
     youtube_ids = yt_search.to_list()
-    print(f'Found {yt_search.count} youtube videos for {args.search}, \
+    print(f'Found {yt_search.count} youtube videos for {args.search},\
           {args.added_search}')
 
 if args.download:

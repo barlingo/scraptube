@@ -2,17 +2,18 @@
 vedit module
 
 """
-import shutil
 import os
 import tkinter
 from os import walk
-import cv2
+import json
 import re
+import cv2
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 # import moviepy.editor
 
-import PIL.Image
-import PIL.ImageTk
+from PIL import Image
+from PIL import ImageTk
+
 import time
 
 
@@ -65,43 +66,68 @@ class LabelApp:
         self.btn_jmp_fwd = tkinter.Button(window,
                                           text=f"{CTRL['jump_step']} Forward ({CTRL['jump_fwd']})",
                                           width=10,
-                                          command=self.video_forward(CTRL['jump_step']))
+                                          command=lambda: self.video_forward(CTRL['jump_step']))
         self.btn_jmp_fwd.pack(side=tkinter.RIGHT,
                               anchor=tkinter.N, expand=True)
 
         self.btn_jmp_back = tkinter.Button(window,
                                            text=f"{CTRL['jump_step']} Back ({CTRL['jump_back']})",
                                            width=10,
-                                           command=self.video_backward(CTRL['jump_step']))
+                                           command=lambda: self.video_backward(CTRL['jump_step']))
         self.btn_jmp_back.pack(
             side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
 
         self.btn_fwd = tkinter.Button(window, text=f"1 Forward ({CTRL['fwd']})",
                                       width=10,
-                                      command=self.video_forward(1))
+                                      command=lambda: self.video_forward(1))
         self.btn_fwd.pack(side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
 
         self.btn_back = tkinter.Button(window,
                                        text=f"1 Back ({CTRL['back']})",
                                        width=10,
-                                       command=self.video_backward(1))
+                                       command=lambda: self.video_backward(1))
         self.btn_back.pack(side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
+
+        self.btn_label = tkinter.Button(window,
+                                        text=f"Label {self.main_label}({LABELS['label']})",
+                                        width=15,
+                                        command=lambda: self.place_label)
+        self.btn_label.pack(side=tkinter.LEFT, anchor=tkinter.SE, expand=True)
+
+        self.btn_relabel = tkinter.Button(window,
+                                          text=f"Relabel ({LABELS['relabel']})",
+                                          width=15,
+                                          command=lambda: self.relabel_clip)
+        self.btn_relabel.pack(
+            side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
+
+        self.btn_general = tkinter.Button(window,
+                                          text=f"Label General ({LABELS['general']})",
+                                          width=15,
+                                          command=lambda: self.general_label)
+        self.btn_general.pack(
+            side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
+
+        self.btn_quit = tkinter.Button(window,
+                                       text=f"Close and Save({CTRL['close']})",
+                                       width=15,
+                                       command=lambda: self.close())
+        self.btn_quit.pack(side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
 
         self.btn_pause_play = tkinter.Button(window,
                                              text=f"Pause/Play ({CTRL['pause_play']})",
                                              width=15,
-                                             command=self.video_pause())
+                                             command=self.video_pause)
         self.btn_pause_play.pack(
             side=tkinter.RIGHT, anchor=tkinter.CENTER, expand=True)
 
         self.entry_label = tkinter.Entry(window)
-        self.canvas.create_window(320, 12,  window=self.entry_label)
+        self.canvas.create_window(320, 12, window=self.entry_label)
 
         # After it is called once, the update method
         #  will be automatically called every delay milliseconds
         self.delay = 15
         self.update_video()
-        print("reachead maind loop")
         self.window.mainloop()
 
     def on_key_press(self, event):
@@ -127,7 +153,7 @@ class LabelApp:
             self.general_label()
 
     def close(self):
-        print(self.label_dict)
+        self.save_json()
         self.window.destroy()
 
     def general_label(self):
@@ -189,8 +215,8 @@ class LabelApp:
     def update_frame(self):
         ret, frame = self.cap.get_frame()
         if ret:
-            self.photo = PIL.ImageTk.PhotoImage(
-                image=PIL.Image.fromarray(frame))
+            self.photo = ImageTk.PhotoImage(
+                image=Image.fromarray(frame))
             self.canvas.create_image(0, 0, image=self.photo, anchor=tkinter.NW)
 
     def video_pause(self):
@@ -207,6 +233,11 @@ class LabelApp:
     def video_backward(self, step):
         self.cap.backward(step + 1)
         self.update_frame()
+
+    def save_json(self):
+        file = os.path.splitext(self.video_source)[0] + '.json'
+        with open(file, 'w') as f:
+            json.dump(self.label_dict, f, indent=4)
 
 
 class VideoCapture():
@@ -317,9 +348,11 @@ class SubFolderProcessing():
     def label_videos(self):
         count = 0
         for file_path in self.file_paths:
-            if not file_path.endswith('.csv'):
-                LabelApp(tkinter.Tk(), self.name, file_path)
-            if count == 500:
+            if not file_path.endswith('.csv') or file_path.endswith('.json'):
+                json_file = os.path.splitext(file_path)[0] + '.json'
+                if not os.path.isfile(json_file):
+                    LabelApp(tkinter.Tk(), self.name, file_path)
+            if count == 5:
                 break
             count += 1
 
