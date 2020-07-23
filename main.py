@@ -67,7 +67,7 @@ if args.download:
 
 if args.clean:
     repeated_files = scraptube.clean.find_repeated_files(MAIN_PATH)
-    # scraptube.clean.delete_duplicated(repeated_files)
+    scraptube.clean.delete_duplicated(repeated_files)
 
 if args.label:
     logger.debug(f"Procesing folder {args.label}")

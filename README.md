@@ -12,5 +12,6 @@
     - -s --search: Main query to be search (Not literal)
     - -a --added-search: Added parameter to be search or excluded. e.g. +exercise -music ...
     - -d --download: Download files to ./output/{main_query} folder
-    - -c --clean: Starts labelling the videos on specified folder. e.g. --clean ./output/deadlift
+    - -c --clean: Removes video duplicates in the ./output/{query} folder.
+    - -l --label: Start labelling app to mark from main labels contained in labels.txt file. e.g. -l ./output/{query}
 
