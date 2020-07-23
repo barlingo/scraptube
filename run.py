@@ -71,5 +71,5 @@ if args.clean:
 
 if args.label:
     logger.debug(f"Procesing folder {args.label}")
-    processor = scraptube.label.SubFolderProcessing(args.clean)
+    processor = scraptube.label.SubFolderProcessing(args.label)
     processor.label_videos()

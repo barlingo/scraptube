@@ -3,6 +3,7 @@
 vedit module
 """
 import os
+import logging
 import tkinter
 from os import walk
 import json
@@ -13,6 +14,23 @@ from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from PIL import Image
 from PIL import ImageTk
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+    '%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+file_handler = logging.FileHandler(__name__ + ".log")
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 KEY_FUNC_MAP = {
     'back': 'H',
@@ -26,30 +44,11 @@ KEY_FUNC_MAP = {
     'label': 'A'
 }
 
-LABELS = [
-    'general',
-    'standing-overhead-dumbell-press',
-    'single-leg-deadlift',
-    'glute-bridge',
-    'dumbbell-row',
-    'dumbbell-lateral-raise',
-    'push-press',
-    'leg-press',
-    'superman',
-    'lunge',
-    'burpee',
-    'bench-press',
-    'biceps-curl',
-    'deadlift',
-    'push-up',
-    'squat',
-    'plank',
-    'side-plank',
-    'pull-up',
-    'sit-up',
-    'jump-rope'
+with open('labels.txt') as file:
+    file_content = file.readlines()
+LABELS = [x.strip() for x in file_content]
 
-]
+logger.debug(f"Detected labels: {LABELS}")
 
 
 class LabelApp:
@@ -77,10 +76,17 @@ class LabelApp:
 
         # Buttons to select
 
+        self.btn_skip = tkinter.Button(app,
+                                       text=f"Skip video ({KEY_FUNC_MAP['skip']})",
+                                       width=30,
+                                       command=lambda: self.close_save(False))
+        self.btn_skip.pack(
+            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+
         self.btn_quit = tkinter.Button(app,
                                        text=f"Close and Save Video ({KEY_FUNC_MAP['close_save']})",
                                        width=30,
-                                       command=lambda: self.close_save())
+                                       command=lambda: self.close_save(True))
         self.btn_quit.pack(
             side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
 
@@ -327,25 +333,3 @@ class SubFolderProcessing():
                     count += 1
             if count == 5:
                 break
-
-
-# class MainFolderProcessing():
-#
-#     def __init__(self, main_path):
-#         self.main_folder_path = main_path
-#         self.paths = self.ls_subfolders()
-#
-#     def ls_subfolders(self):
-#         filenames_list = []
-#         paths_list = []
-#         for (dirpath, _, filenames) in walk(self.main_folder_path):
-#             filenames_list.extend(filenames)
-#             paths_list.append(dirpath)
-#
-#         paths_list = paths_list[1:]
-#         return filenames_list, paths_list
-#
-#     def process_subfolders(self, step):
-#         for subfolder in self.paths:
-#             processor = SubFolderProcessing(subfolder)
-#             processor.process_files(step)
