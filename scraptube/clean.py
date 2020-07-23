@@ -5,6 +5,55 @@ from collections import defaultdict
 import hashlib
 import os
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+    '%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+file_handler = logging.FileHandler(__name__ + ".log")
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
+
+
+def find_repeated_files(path):
+    total_files = set()
+    repeated_files_paths = []
+    for path, subdir, files in os.walk(path):
+        for file in files:
+            if file in total_files:
+                logger.debug(f"File {file} duplicated in {path}")
+                repeated_files_paths.append(os.path.join(path, file))
+            else:
+                total_files.add(file)
+
+    num_files = len(repeated_files_paths)
+    logger.info(f"Found {num_files} duplicated files.")
+
+    return repeated_files_paths
+
+
+def delete_duplicated(filepaths):
+    num_files = len(filepaths)
+    logger.info(f"{num_files} files to be deleted.")
+
+    for filepath in filepaths:
+        json_file = os.path.splitext(filepath)[0] + '.json'
+        if not os.path.isfile(json_file):
+            try:
+                logger.debug(f"Deleted {filepath}")
+                os.remove(filepath)
+            except OSError:
+                logger.error(f"Unable to delete {filepath}")
 
 
 def chunk_reader(fobj, chunk_size=1024):

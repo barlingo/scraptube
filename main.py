@@ -5,7 +5,7 @@ Run python module
 import argparse
 import logging
 import scraptube
-
+import os
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -26,21 +26,23 @@ logger.addHandler(stream_handler)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--search", type=str,
-                    help="Performs search on yt")
+                    help="performs search on yt")
 parser.add_argument("-a", "--added_search", type=str,
-                    help="Added arguments to main search query add + for each")
+                    help="added arguments to main search query add + for each")
 parser.add_argument("-d", "--download", action="store_true",
-                    help="Downloads videos from query result ")
+                    help="downloads videos from query result ")
 parser.add_argument("-f", "--format", type=int,
-                    help="Format videos into chucks of N seconds")
-parser.add_argument("-c", "--clean", type=str,
-                    help="Performs data clean of specified folder")
-
+                    help="format videos into chucks of n seconds")
+parser.add_argument("-c", "--clean", action="store_true",
+                    help="performs data clean of specified folder")
+parser.add_argument("-l", "--label", type=str,
+                    help="start labeling videos of specified folder")
 args = parser.parse_args()
 
+MAIN_PATH = './output'
 
 if args.search is not None:
-    PATH = './output/' + args.search
+    PATH = MAIN_PATH + args.search
     query = args.search + ", " + args.added_search
     yt_search = scraptube.search.YoutubeSearch(query)
     youtube_ids = yt_search.to_list()
@@ -64,6 +66,10 @@ if args.download:
 #     processor.clip_files(args.format)
 
 if args.clean:
-    logger.debug(f"Procesing folder {args.clean}")
+    repeated_files = scraptube.clean.find_repeated_files(MAIN_PATH)
+    # scraptube.clean.delete_duplicated(repeated_files)
+
+if args.label:
+    logger.debug(f"Procesing folder {args.label}")
     processor = scraptube.label.SubFolderProcessing(args.clean)
     processor.label_videos()
