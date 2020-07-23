@@ -1,4 +1,4 @@
 from . import search
-from . import tubedown
+from . import down
 from . import label
 from . import clean
