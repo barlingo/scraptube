@@ -4,9 +4,25 @@ Run python module
 """
 import argparse
 import logging
-from scraptube import vedit
-from scraptube import search
-from scraptube import tubedown
+import scraptube
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+    '%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+file_handler = logging.FileHandler(__name__ + ".log")
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--search", type=str,
@@ -26,17 +42,20 @@ args = parser.parse_args()
 if args.search is not None:
     PATH = './output/' + args.search
     query = args.search + ", " + args.added_search
-    yt_search = search.YoutubeSearch(query)
+    yt_search = scraptube.search.YoutubeSearch(query)
     youtube_ids = yt_search.to_list()
-    print(f'Found {yt_search.count} youtube videos for {args.search},\
+    logger.info(f'Found {yt_search.count} youtube videos for {args.search},\
           {args.added_search}')
 
 if args.download:
-    print("Starting download...")
-    extractor = tubedown.extractVideos(PATH, youtube_ids)
-    extractor.parallel_download()
-    extractor.merge_logs(args.search)
-    extractor.purge_logs()
+    try:
+        extractor = scraptube.tubedown.extractVideos(PATH, youtube_ids)
+        logger.info("Starting download...")
+        extractor.parallel_download()
+        extractor.merge_logs(args.search)
+        extractor.purge_logs()
+    except NameError:
+        logger.error("Search required before downloading files.")
 
 # if args.format:
 #     print(f"Trimming videos on {args.format} seconds chunks")
@@ -45,5 +64,6 @@ if args.download:
 #     processor.clip_files(args.format)
 
 if args.clean:
-    processor = vedit.SubFolderProcessing(args.clean)
+    logger.debug(f"Procesing folder {args.clean}")
+    processor = scraptube.label.SubFolderProcessing(args.clean)
     processor.label_videos()
