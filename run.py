@@ -3,6 +3,7 @@
 Run python module
 """
 import argparse
+import logging
 from scraptube import vedit
 from scraptube import search
 from scraptube import tubedown

@@ -9,208 +9,180 @@ import json
 import re
 import cv2
 from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
-# import moviepy.editor
 
 from PIL import Image
 from PIL import ImageTk
 
-import time
 
-
-CTRL = {
+KEY_FUNC_MAP = {
     'back': 'H',
     'fwd': 'L',
     'jump_back': 'J',
     'jump_fwd': 'K',
     'jump_step': 50,
-    'close': 'Q',
-    'pause_play': 'space'
+    'close_save': 'Q',
+    'skip': 'S',
+    'pause_play': 'space',
+    'label': 'A'
 }
 
-LABELS = {
-    'general': 'E',
-    'relabel': 'R',
-    'label': 'A',
-    'reset': 'C'
-}
+LABELS = [
+    'general',
+    'standing-overhead-dumbell-press',
+    'single-leg-deadlift',
+    'glute-bridge',
+    'dumbbell-row',
+    'dumbbell-lateral-raise',
+    'push-press',
+    'leg-press',
+    'superman',
+    'lunge',
+    'burpee',
+    'bench-press',
+    'biceps-curl',
+    'deadlift',
+    'push-up',
+    'squat',
+    'plank',
+    'side-plank',
+    'pull-up',
+    'sit-up',
+    'jump-rope'
+
+]
 
 
 class LabelApp:
 
-    def __init__(self, window, window_title, video_source=0):
-        self.window = window
-        self.main_label = window_title
-        self.window.title(self.main_label)
+    def __init__(self, app, app_title, video_source=0):
+        self.app = app
+        self.app_title = app_title
+        self.app.title(self.app_title)
         self.video_source = video_source
         self.video_dest = self.video_source.replace('output', 'clean', 1)
         self.video_query = re.search(
             './output/(.*?)/(.*?)', self.video_source).group(1)
         self.cap = VideoCapture(self.video_source)
+        self.flag_label_map = {key: False for key in LABELS}
         self.pause_flag = True
-        self.label_flag = False
-        self.relabel_flag = False
-        self.gen_label_flag = False
-        self.label_dict = {'video': self.video_source,
-                           'exercise': [],
-                           'start': [],
-                           'end': []}
+        self.label_video_map = {'video': self.video_source,
+                                'exercise': [],
+                                'start': [],
+                                'end': []}
 
         # Create a canvas that can fit the above video source size
         self.canvas = tkinter.Canvas(
-            window, width=self.cap.width, height=self.cap.height)
-        self.window.bind('<KeyPress>', self.on_key_press)
+            app, width=self.cap.width, height=self.cap.height)
+        self.app.bind('<KeyPress>', self.on_key_press)
 
-        self.canvas.pack()
         # Buttons to select
 
-        self.btn_jmp_fwd = tkinter.Button(window,
-                                          text=f"{CTRL['jump_step']} Forward ({CTRL['jump_fwd']})",
+        self.btn_quit = tkinter.Button(app,
+                                       text=f"Close and Save Video ({KEY_FUNC_MAP['close_save']})",
+                                       width=30,
+                                       command=lambda: self.close_save())
+        self.btn_quit.pack(
+            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+
+        self.btn_label = tkinter.Button(app,
+                                        text=f"Place Label ({KEY_FUNC_MAP['label']})",
+                                        width=30,
+                                        command=self.place_label)
+        self.btn_label.pack(
+            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+
+        self.label = tkinter.StringVar(self.app)
+        self.label.set(LABELS[0])
+        self.opt = tkinter.OptionMenu(self.app, self.label, *LABELS)
+        self.opt.config(width=30, font=('Helvetica', 12))
+        self.opt.pack(side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+        self.canvas.pack()
+
+        self.btn_jmp_fwd = tkinter.Button(app,
+                                          text=f"{KEY_FUNC_MAP['jump_step']} Forward ({KEY_FUNC_MAP['jump_fwd']})",
                                           width=10,
-                                          command=lambda: self.video_forward(CTRL['jump_step']))
+                                          command=lambda: self.video_forward(KEY_FUNC_MAP['jump_step']))
         self.btn_jmp_fwd.pack(side=tkinter.RIGHT,
                               anchor=tkinter.N, expand=True)
 
-        self.btn_jmp_back = tkinter.Button(window,
-                                           text=f"{CTRL['jump_step']} Back ({CTRL['jump_back']})",
-                                           width=10,
-                                           command=lambda: self.video_backward(CTRL['jump_step']))
-        self.btn_jmp_back.pack(
-            side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
-
-        self.btn_fwd = tkinter.Button(window, text=f"1 Forward ({CTRL['fwd']})",
+        self.btn_fwd = tkinter.Button(app, text=f"1 Forward ({KEY_FUNC_MAP['fwd']})",
                                       width=10,
                                       command=lambda: self.video_forward(1))
         self.btn_fwd.pack(side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
 
-        self.btn_back = tkinter.Button(window,
-                                       text=f"1 Back ({CTRL['back']})",
-                                       width=10,
-                                       command=lambda: self.video_backward(1))
-        self.btn_back.pack(side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
-
-        self.btn_label = tkinter.Button(window,
-                                        text=f"Label {self.main_label}({LABELS['label']})",
-                                        width=15,
-                                        command=lambda: self.place_label)
-        self.btn_label.pack(side=tkinter.LEFT, anchor=tkinter.SE, expand=True)
-
-        self.btn_relabel = tkinter.Button(window,
-                                          text=f"Relabel ({LABELS['relabel']})",
-                                          width=15,
-                                          command=lambda: self.relabel_clip)
-        self.btn_relabel.pack(
-            side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
-
-        self.btn_general = tkinter.Button(window,
-                                          text=f"Label General ({LABELS['general']})",
-                                          width=15,
-                                          command=lambda: self.general_label)
-        self.btn_general.pack(
-            side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
-
-        self.btn_quit = tkinter.Button(window,
-                                       text=f"Close and Save({CTRL['close']})",
-                                       width=15,
-                                       command=lambda: self.close())
-        self.btn_quit.pack(side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
-
-        self.btn_pause_play = tkinter.Button(window,
-                                             text=f"Pause/Play ({CTRL['pause_play']})",
+        self.btn_pause_play = tkinter.Button(app,
+                                             text=f"Pause/Play ({KEY_FUNC_MAP['pause_play']})",
                                              width=15,
                                              command=self.video_pause)
         self.btn_pause_play.pack(
             side=tkinter.RIGHT, anchor=tkinter.CENTER, expand=True)
 
-        self.entry_label = tkinter.Entry(window)
-        self.canvas.create_window(320, 12, window=self.entry_label)
+        self.btn_jmp_back = tkinter.Button(app,
+                                           text=f"{KEY_FUNC_MAP['jump_step']} Back ({KEY_FUNC_MAP['jump_back']})",
+                                           width=10,
+                                           command=lambda: self.video_backward(KEY_FUNC_MAP['jump_step']))
+        self.btn_jmp_back.pack(
+            side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
+
+        self.btn_back = tkinter.Button(app,
+                                       text=f"1 Back ({KEY_FUNC_MAP['back']})",
+                                       width=10,
+                                       command=lambda: self.video_backward(1))
+        self.btn_back.pack(side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
 
         # After it is called once, the update method
         #  will be automatically called every delay milliseconds
         self.delay = 15
         self.update_video()
-        self.window.mainloop()
+        self.app.mainloop()
 
     def on_key_press(self, event):
-        if event.keysym == CTRL['fwd']:
+        if event.keysym == KEY_FUNC_MAP['fwd']:
             self.video_forward(1)
-        elif event.keysym == CTRL['back']:
+        elif event.keysym == KEY_FUNC_MAP['back']:
             self.video_backward(1)
-        elif event.keysym == CTRL['jump_fwd']:
-            self.video_forward(CTRL['jump_step'])
-        elif event.keysym == CTRL['jump_back']:
-            self.video_backward(CTRL['jump_step'])
+        elif event.keysym == KEY_FUNC_MAP['jump_fwd']:
+            self.video_forward(KEY_FUNC_MAP['jump_step'])
+        elif event.keysym == KEY_FUNC_MAP['jump_back']:
+            self.video_backward(KEY_FUNC_MAP['jump_step'])
         elif event.keysym == 'F':
             self.cap.get_frame_num()
-        elif event.keysym == CTRL['pause_play']:
+        elif event.keysym == KEY_FUNC_MAP['pause_play']:
             self.video_pause()
-        elif event.keysym == CTRL['close']:
-            self.close()
-        elif event.keysym == LABELS['label']:
+        elif event.keysym == KEY_FUNC_MAP['close_save']:
+            self.close_save(True)
+        elif event.keysym == KEY_FUNC_MAP['skip']:
+            self.close_save(False)
+        elif event.keysym == KEY_FUNC_MAP['label']:
             self.place_label()
-        elif event.keysym == LABELS['relabel']:
-            self.relabel_clip()
-        elif event.keysym == LABELS['general']:
-            self.general_label()
 
-    def close(self):
-        self.save_json()
-        self.window.destroy()
-
-    def general_label(self):
-        frame = self.cap.get_frame_num()
-        label = 'general'
-
-        if not self.gen_label_flag:
-            # Create dictionary with end frames marked as the end
-            self.label_dict['exercise'].append(label)
-            self.label_dict['start'].append(frame)
-            print(f"Started labeling as {label} at frame {frame}.")
-            self.gen_label_flag = True
-        elif self.gen_label_flag:
-            # Overwrites end with new frame number
-            self.label_dict['end'].append(frame)
-            print(f"Ended labeling as {label} at frame {frame}.")
-            self.gen_label_flag = False
+    def close_save(self, save_flag):
+        if save_flag:
+            self.save_json()
+        self.app.destroy()
 
     def place_label(self):
         frame = self.cap.get_frame_num()
-        label = self.main_label
+        label = self.label.get()
 
-        if not self.label_flag:
+        if not self.flag_label_map[label]:
             # Create dictionary with end frames marked as the end
-            self.label_dict['exercise'].append(label)
-            self.label_dict['start'].append(frame)
+            self.label_video_map['exercise'].append(label)
+            self.label_video_map['start'].append(frame)
             print(f"Starting labeling as {label} at frame {frame}.")
-            self.label_flag = True
-        elif self.label_flag:
+            self.flag_label_map[label] = True
+        elif self.flag_label_map[label]:
             # Overwrites end with new frame number
-            self.label_dict['end'].append(frame)
+            self.label_video_map['end'].append(frame)
             print(f"Ended labeling as {label} at frame {frame}.")
-            self.label_flag = False
-
-    def relabel_clip(self):
-        frame = self.cap.get_frame_num()
-        label = self.entry_label.get()
-
-        if label == '':
-            print("No new label entered in field.")
-        else:
-            if not self.relabel_flag:
-                self.label_dict['exercise'].append(label)
-                self.label_dict['start'].append(frame)
-                print(f"Starting labeling as {label} at frame {frame}.")
-                self.relabel_flag = True
-            elif self.relabel_flag:
-                self.label_dict['end'].append(frame)
-                print(f"Ended labeling as {label} at frame {frame}.")
-                self.relabel_flag = False
+            self.flag_label_map[label] = False
 
     def update_video(self):
         # Get a frame from the video source
         self.update_frame()
 
         if self.pause_flag:
-            self.window.after(self.delay, self.update_video)
+            self.app.after(self.delay, self.update_video)
 
     def update_frame(self):
         ret, frame = self.cap.get_frame()
@@ -224,7 +196,7 @@ class LabelApp:
             self.pause_flag = False
         else:
             self.pause_flag = True
-            self.window.after(self.delay, self.update_video)
+            self.app.after(self.delay, self.update_video)
 
     def video_forward(self, step):
         self.cap.forward(step - 1)
@@ -235,9 +207,9 @@ class LabelApp:
         self.update_frame()
 
     def save_json(self):
-        file = os.path.splitext(self.video_source)[0] + '.json'
-        with open(file, 'w') as f:
-            json.dump(self.label_dict, f, indent=4)
+        filename = os.path.splitext(self.video_source)[0] + '.json'
+        with open(filename, 'w') as file:
+            json.dump(self.label_video_map, file, indent=4)
 
 
 class VideoCapture():
