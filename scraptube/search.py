@@ -2,8 +2,26 @@
 import urllib.parse
 from random import randint
 import time
+import logging
 from bs4 import BeautifulSoup
 from selenium import webdriver
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+    '%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+file_handler = logging.FileHandler(__name__ + ".log")
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 
 class YoutubeSearch:
@@ -27,6 +45,9 @@ class YoutubeSearch:
 
         if self.max_results is not None and len(results) > self.max_results:
             return results[:self.max_results]
+
+        logger.info(
+            f'Found {len(results)} youtube videos for {self.search_terms}')
         return results
 
     def parse_lxml(self, soup):

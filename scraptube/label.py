@@ -298,6 +298,7 @@ class MainVideoClipping():
 
 class SubFolderProcessing():
     def __init__(self, subfolder_path):
+        logger.debug(f"Procesing folder {subfolder_path}")
         self.subfolder_path = subfolder_path
         self.filenames, self.file_paths = self.ls_videos()
         self.total_files = len(self.filenames)

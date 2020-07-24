@@ -6,8 +6,26 @@ from fnmatch import fnmatch
 import os
 import csv
 import pytube
-
+import logging
 BASE_URL = "https://youtube.com"
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(
+    '%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+file_handler = logging.FileHandler(__name__ + ".log")
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 
 class SourceVideo():
@@ -106,5 +124,6 @@ class extractVideos(object):
             print(f'Unable to download {youtube_id}')
 
     def parallel_download(self):
+        logger.info("Starting download...")
         with concurrent.futures.ThreadPoolExecutor() as executor:
             executor.map(self.download_video, self.youtube_ids)
