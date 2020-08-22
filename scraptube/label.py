@@ -3,9 +3,10 @@
 vedit module
 """
 import os
-from pathlib import Path
 import logging
 import tkinter
+from tkinter import ttk
+import datetime
 import json
 import re
 import cv2
@@ -52,6 +53,7 @@ logger.debug(f"Detected labels: {LABELS}")
 
 
 class LabelApp:
+    bar_width = 310
 
     def __init__(self, app, app_title, video_source=0):
         self.app = app
@@ -70,72 +72,9 @@ class LabelApp:
                                 'start': [],
                                 'end': []}
 
-        # Create a canvas that can fit the above video source size
-        self.canvas = tkinter.Canvas(
-            app, width=self.cap.width, height=self.cap.height)
         self.app.bind('<KeyPress>', self.on_key_press)
-
-        # Buttons to select
-
-        self.btn_skip = tkinter.Button(app,
-                                       text=f"Skip video ({KEY_FUNC_MAP['skip']})",
-                                       width=30,
-                                       command=lambda: self.close_save(False))
-        self.btn_skip.pack(
-            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
-
-        self.btn_quit = tkinter.Button(app,
-                                       text=f"Close and Save Video ({KEY_FUNC_MAP['close_save']})",
-                                       width=30,
-                                       command=lambda: self.close_save(True))
-        self.btn_quit.pack(
-            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
-
-        self.btn_label = tkinter.Button(app,
-                                        text=f"Place Label ({KEY_FUNC_MAP['label']})",
-                                        width=30,
-                                        command=self.place_label)
-        self.btn_label.pack(
-            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
-
-        self.label = tkinter.StringVar(self.app)
-        self.label.set(LABELS[0])
-        self.opt = tkinter.OptionMenu(self.app, self.label, *LABELS)
-        self.opt.config(width=30, font=('Helvetica', 12))
-        self.opt.pack(side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
-        self.canvas.pack()
-
-        self.btn_jmp_fwd = tkinter.Button(app,
-                                          text=f"{KEY_FUNC_MAP['jump_step']} Forward ({KEY_FUNC_MAP['jump_fwd']})",
-                                          width=10,
-                                          command=lambda: self.video_forward(KEY_FUNC_MAP['jump_step']))
-        self.btn_jmp_fwd.pack(side=tkinter.RIGHT,
-                              anchor=tkinter.N, expand=True)
-
-        self.btn_fwd = tkinter.Button(app, text=f"1 Forward ({KEY_FUNC_MAP['fwd']})",
-                                      width=10,
-                                      command=lambda: self.video_forward(1))
-        self.btn_fwd.pack(side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
-
-        self.btn_pause_play = tkinter.Button(app,
-                                             text=f"Pause/Play ({KEY_FUNC_MAP['pause_play']})",
-                                             width=15,
-                                             command=self.video_pause)
-        self.btn_pause_play.pack(
-            side=tkinter.RIGHT, anchor=tkinter.CENTER, expand=True)
-
-        self.btn_jmp_back = tkinter.Button(app,
-                                           text=f"{KEY_FUNC_MAP['jump_step']} Back ({KEY_FUNC_MAP['jump_back']})",
-                                           width=10,
-                                           command=lambda: self.video_backward(KEY_FUNC_MAP['jump_step']))
-        self.btn_jmp_back.pack(
-            side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
-
-        self.btn_back = tkinter.Button(app,
-                                       text=f"1 Back ({KEY_FUNC_MAP['back']})",
-                                       width=10,
-                                       command=lambda: self.video_backward(1))
-        self.btn_back.pack(side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
+        self.__create_items()
+        self.__pack_items()
 
         # After it is called once, the update method
         #  will be automatically called every delay milliseconds
@@ -190,6 +129,7 @@ class LabelApp:
 
     def update_video(self):
         # Get a frame from the video source
+        self.update_headline()
         self.update_frame()
 
         if self.pause_flag:
@@ -202,6 +142,15 @@ class LabelApp:
                 image=Image.fromarray(frame))
             self.canvas.create_image(0, 0, image=self.photo, anchor=tkinter.NW)
 
+    def update_headline(self):
+        frame = self.cap.get_frame_num()
+        time = self.cap.get_time()
+        update_str = (f'ID: {self.cap.yt_id}    '
+                      f'Frame: {frame}/{self.cap.t_frames}   '
+                      f'Time: {time}/{self.cap.t_time_str}   ')
+        # update_str = str(update_str)
+        self.head_text.set(update_str)
+
     def video_pause(self):
         if self.pause_flag:
             self.pause_flag = False
@@ -211,16 +160,105 @@ class LabelApp:
 
     def video_forward(self, step):
         self.cap.forward(step - 1)
+        self.update_headline()
         self.update_frame()
 
     def video_backward(self, step):
         self.cap.backward(step + 1)
+        self.update_headline()
         self.update_frame()
 
     def save_json(self):
         filename = os.path.splitext(self.video_source)[0] + '.json'
         with open(filename, 'w') as file:
             json.dump(self.label_video_map, file, indent=4)
+
+    def __create_items(self):
+        self.canvas = tkinter.Canvas(self.app, width=self.cap.width,
+                                     height=self.cap.height)
+
+        # Buttons to select
+        self.label_text = tkinter.StringVar()
+        self.label_text.set("General")
+        self.head_text = tkinter.StringVar()
+        self.headline = tkinter.Label(self.app, textvariable=self.head_text,
+                                      font=("Helvetica", 12))
+        self.labeline = tkinter.Label(self.app, textvariable=self.label_text,
+                                      font=("Helvetica Bold", 12))
+        b_text = f"Skip video ({KEY_FUNC_MAP['skip']})"
+        self.btn_skip = tkinter.Button(self.app,
+                                       text=b_text,
+                                       width=30,
+                                       command=lambda: self.close_save(False))
+
+        b_text = f"Close and Save Video ({KEY_FUNC_MAP['close_save']})"
+        self.btn_quit = tkinter.Button(self.app,
+                                       text=b_text,
+                                       width=30,
+                                       command=lambda: self.close_save(True))
+
+        b_text = f"Place Label ({KEY_FUNC_MAP['label']})"
+        self.btn_label = tkinter.Button(self.app,
+                                        text=b_text,
+                                        width=30,
+                                        command=self.place_label)
+
+        self.label = tkinter.StringVar(self.app)
+        self.label.set(LABELS[0])
+
+        self.opt = tkinter.OptionMenu(self.app, self.label, *LABELS)
+        self.opt.config(width=30, font=('Helvetica', 12))
+
+        b_text = f"{KEY_FUNC_MAP['jump_step']} Forward ({KEY_FUNC_MAP['jump_fwd']})"
+        self.btn_jmp_fwd = tkinter.Button(self.app,
+                                          text=b_text,
+                                          width=10,
+                                          command=lambda: self.video_forward(KEY_FUNC_MAP['jump_step']))
+
+        b_text = f"1 Forward ({KEY_FUNC_MAP['fwd']})"
+        self.btn_fwd = tkinter.Button(self.app,
+                                      text=b_text,
+                                      width=10,
+                                      command=lambda: self.video_forward(1))
+
+        b_text = f"Pause/Play ({KEY_FUNC_MAP['pause_play']})"
+        self.btn_pause_play = tkinter.Button(self.app,
+                                             text=b_text,
+                                             width=15,
+                                             command=self.video_pause)
+
+        b_text = f"{KEY_FUNC_MAP['jump_step']} Back ({KEY_FUNC_MAP['jump_back']})"
+        self.btn_jmp_back = tkinter.Button(self.app,
+                                           text=b_text,
+                                           width=10,
+                                           command=lambda: self.video_backward(KEY_FUNC_MAP['jump_step']))
+
+        b_text = f"1 Back ({KEY_FUNC_MAP['back']})"
+        self.btn_back = tkinter.Button(self.app,
+                                       text=b_text,
+                                       width=10,
+                                       command=lambda: self.video_backward(1))
+
+    def __pack_items(self):
+        self.labeline.pack(side=tkinter.TOP, anchor=tkinter.CENTER)
+        self.headline.pack(side=tkinter.TOP, anchor=tkinter.CENTER)
+        self.update_headline()
+        self.btn_skip.pack(
+            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+        self.btn_quit.pack(
+            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+        self.btn_label.pack(
+            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+        self.opt.pack(side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+        self.canvas.pack()
+        self.btn_jmp_fwd.pack(side=tkinter.RIGHT,
+                              anchor=tkinter.N, expand=True)
+        self.btn_fwd.pack(side=tkinter.RIGHT, anchor=tkinter.SE, expand=True)
+        self.btn_pause_play.pack(
+            side=tkinter.RIGHT, anchor=tkinter.CENTER, expand=True)
+        self.btn_jmp_back.pack(
+            side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
+        self.btn_back.pack(side=tkinter.LEFT, anchor=tkinter.SW, expand=True)
 
 
 class VideoCapture():
@@ -234,7 +272,10 @@ class VideoCapture():
         # Get video source width and height
         self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        self.total_frames = int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.fps = int(self.vid.get(cv2.CAP_PROP_FPS))
+        self.t_frames = int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.t_secs = int(self.t_frames / self.fps)
+        self.t_time_str = str(datetime.timedelta(seconds=self.t_secs))
         self.yt_id = os.path.basename(video_source).split(".mp4")[
             0].split("_")[1]
 
@@ -253,6 +294,15 @@ class VideoCapture():
         if self.vid.isOpened():
             frame_num = int(self.vid.get(cv2.CAP_PROP_POS_FRAMES))
             return frame_num
+        else:
+            return None
+
+    def get_time(self):
+        if self.vid.isOpened():
+            frame = int(self.vid.get(cv2.CAP_PROP_POS_FRAMES))
+            secs = int(frame / self.fps)
+            time_str = str(datetime.timedelta(seconds=secs))
+            return time_str
         else:
             return None
 
