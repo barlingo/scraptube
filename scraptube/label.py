@@ -129,7 +129,11 @@ class LabelApp:
             logger.info(
                 f"{self.cap.yt_id} | End label: {label} at frame {frame}.")
             self.flag_label_map[label] = False
+            index = len(self.label_video_map['exercise']) - 1
+            label = self.label_video_map['exercise'][index]
+            start = self.label_video_map['start'][index]
         self.update_label_text()
+        self.update_table()
 
     def delete_label(self):
         frame = self.cap.get_frame_num()
@@ -155,6 +159,7 @@ class LabelApp:
             text = "No label found to be deleted."
 
         self.label_text.set(text)
+        self.update_table()
 
     def del_entry_from_map(self, index):
         del self.label_video_map['exercise'][index]
@@ -163,6 +168,7 @@ class LabelApp:
             del self.label_video_map['end'][index]
         except:
             pass
+        self.tree.delete(index)
 
     def update_all(self):
         self.update_headline()
@@ -190,6 +196,23 @@ class LabelApp:
                       f'Frame: {frame}/{self.cap.t_frames}   '
                       f'Time: {time}/{self.cap.t_time_str}   ')
         self.head_text.set(update_str)
+
+    def update_table(self):
+        for pos, _ in enumerate(self.label_video_map['exercise']):
+            try:
+                label = self.label_video_map['exercise'][pos]
+                start = self.label_video_map['start'][pos]
+            except IndexError:
+                pass
+            try:
+                self.tree.delete(pos)
+                end = self.label_video_map['end'][pos]
+            except IndexError:
+                end = ''
+            except tkinter.TclError:
+                end = ''
+            values = (label, start, end)
+            self.tree.insert("", pos, iid=pos, values=values)
 
     def update_label_text(self):
         frame = self.cap.get_frame_num()
@@ -230,6 +253,11 @@ class LabelApp:
         self.canvas = tkinter.Canvas(self.app, width=self.cap.width,
                                      height=self.cap.height)
 
+        self.columns = ('Label', 'Start', 'End')
+        self.tree = ttk.Treeview(
+            self.app, columns=self.columns, show='headings')
+        for header in self.columns:
+            self.tree.heading(header, text=header)
         # Buttons to select
         self.label_text = tkinter.StringVar()
         self.head_text = tkinter.StringVar()
@@ -243,7 +271,7 @@ class LabelApp:
                                        width=30,
                                        command=lambda: self.close_save(False))
 
-        b_text = f"Close and Save Video ({KEY_FUNC_MAP['close_save']})"
+        b_text = f"Close video and save labels ({KEY_FUNC_MAP['close_save']})"
         self.btn_quit = tkinter.Button(self.app,
                                        text=b_text,
                                        width=30,
@@ -310,6 +338,7 @@ class LabelApp:
         self.btn_delete.pack(
             side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
         self.opt.pack(side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+        self.tree.pack(side=tkinter.BOTTOM)
         self.canvas.pack()
         self.btn_jmp_fwd.pack(side=tkinter.RIGHT,
                               anchor=tkinter.N, expand=True)
