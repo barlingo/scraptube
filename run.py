@@ -3,9 +3,7 @@
 Run python module
 """
 import argparse
-import logging
 import scraptube
-import os
 
 
 parser = argparse.ArgumentParser()
@@ -19,6 +17,8 @@ parser.add_argument("-c", "--clean", action="store_true",
                     help="performs data clean of specified folder")
 parser.add_argument("-l", "--label", type=str,
                     help="start labeling videos of specified folder")
+parser.add_argument("-n", "--number", action="store_true",
+                    help="count the number of entries in all json files")
 args = parser.parse_args()
 
 MAIN_PATH = './output'
@@ -45,3 +45,11 @@ if args.clean:
 if args.label:
     processor = scraptube.label.SubFolderProcessing(args.label)
     processor.label_videos()
+
+if args.number:
+    import matplotlib.pyplot as plt
+    sum_entries = scraptube.label_count.count_all_labels(MAIN_PATH, "exercise")
+    plt.bar(list(sum_entries.keys()), sum_entries.values())
+    plt.xticks(rotation=90)
+    plt.subplots_adjust(bottom=0.302, top=0.98, right=0.98, left=0.06)
+    plt.show()

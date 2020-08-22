@@ -5,7 +5,6 @@ vedit module
 import os
 import logging
 import tkinter
-from os import walk
 import json
 import re
 import cv2
@@ -14,6 +13,7 @@ from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from PIL import Image
 from PIL import ImageTk
 
+from . import utils
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -62,6 +62,7 @@ class LabelApp:
         self.video_query = re.search(
             './output/(.*?)/(.*?)', self.video_source).group(1)
         self.cap = VideoCapture(self.video_source)
+        logger.info(f"{self.cap.yt_id} | Started App.")
         self.flag_label_map = {key: False for key in LABELS}
         self.pause_flag = True
         self.label_video_map = {'video': self.video_source,
@@ -165,7 +166,9 @@ class LabelApp:
     def close_save(self, save_flag):
         if save_flag:
             self.save_json()
+            logger.debug(f"{self.cap.yt_id} | Saved json file.")
         self.app.destroy()
+        logger.debug(f"{self.cap.yt_id} | Closed file.")
 
     def place_label(self):
         frame = self.cap.get_frame_num()
@@ -175,12 +178,14 @@ class LabelApp:
             # Create dictionary with end frames marked as the end
             self.label_video_map['exercise'].append(label)
             self.label_video_map['start'].append(frame)
-            print(f"Starting labeling as {label} at frame {frame}.")
+            logger.info(
+                f"{self.cap.yt_id} | Start label: {label} at frame {frame}.")
             self.flag_label_map[label] = True
         elif self.flag_label_map[label]:
             # Overwrites end with new frame number
             self.label_video_map['end'].append(frame)
-            print(f"Ended labeling as {label} at frame {frame}.")
+            logger.info(
+                f"{self.cap.yt_id} | End label: {label} at frame {frame}.")
             self.flag_label_map[label] = False
 
     def update_video(self):
@@ -230,6 +235,8 @@ class VideoCapture():
         self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self.total_frames = int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.yt_id = os.path.basename(video_source).split(".mp4")[
+            0].split("_")[1]
 
     def get_frame(self):
         if self.vid.isOpened():
@@ -316,7 +323,7 @@ class SubFolderProcessing():
     def ls_videos(self):
         filenames = []
         file_paths = []
-        for (_, _, filename) in walk(self.subfolder_path):
+        for (_, _, filename) in os.walk(self.subfolder_path):
             filenames.extend(filename)
         for file in filenames:
             file_path = f'{self.subfolder_path}/{file}'
