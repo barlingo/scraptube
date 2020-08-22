@@ -14,4 +14,5 @@
     - -d --download: Download files to ./output/{main_query} folder
     - -c --clean: Removes video duplicates in the ./output/{query} folder.
     - -l --label: Start labelling app to mark from main labels contained in labels.txt file. e.g. -l ./output/{query}
+    - -n --number: Displays a histogram of all the labels contained in json files in the ./output/ folder.
 
