@@ -3,6 +3,7 @@
 vedit module
 """
 import os
+from pathlib import Path
 import logging
 import tkinter
 import json
@@ -13,7 +14,6 @@ from moviepy.video.io.ffmpeg_tools import ffmpeg_extract_subclip
 from PIL import Image
 from PIL import ImageTk
 
-from . import utils
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -321,17 +321,23 @@ class SubFolderProcessing():
         self.filenames, self.file_paths = self.ls_videos()
 
     def ls_videos(self):
-        filenames = []
-        file_paths = []
-        for (_, _, filename) in os.walk(self.subfolder_path):
-            filenames.extend(filename)
-        for file in filenames:
-            file_path = f'{self.subfolder_path}/{file}'
-            file_paths.append(file_path)
+        file_infos = []
+
+        for main_dir, sub_dir, filenames in os.walk(self.subfolder_path):
+            for filename in filenames:
+                file_path = f'{self.subfolder_path}/{filename}'
+                size = os.path.getsize(file_path)
+                file_infos.append([size, filename, file_path])
+
+        # filenames = [path.replace(del_str, '') for path in file_paths]
+        file_infos.sort(key=lambda s: s[0])
+        filenames = [row[1] for row in file_infos]
+        file_paths = [row[2] for row in file_infos]
 
         return filenames, file_paths
 
     def label_videos(self):
+
         count = 0
         for file_path in self.file_paths:
             if not file_path.endswith('.csv') or file_path.endswith('.json'):
