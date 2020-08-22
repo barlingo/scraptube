@@ -42,7 +42,8 @@ KEY_FUNC_MAP = {
     'close_save': 'Q',
     'skip': 'S',
     'pause_play': 'space',
-    'label': 'A'
+    'label': 'A',
+    'delete': 'D'
 }
 
 with open('labels.txt') as file:
@@ -101,6 +102,8 @@ class LabelApp:
             self.close_save(False)
         elif event.keysym == KEY_FUNC_MAP['label']:
             self.place_label()
+        elif event.keysym == KEY_FUNC_MAP['delete']:
+            self.delete_label()
 
     def close_save(self, save_flag):
         if save_flag:
@@ -126,11 +129,49 @@ class LabelApp:
             logger.info(
                 f"{self.cap.yt_id} | End label: {label} at frame {frame}.")
             self.flag_label_map[label] = False
+        self.update_label_text()
+
+    def delete_label(self):
+        frame = self.cap.get_frame_num()
+
+        if frame in self.label_video_map['start']:
+            index = self.label_video_map['start'].index(frame)
+            label = self.label_video_map['exercise'][index]
+            try:
+                end = self.label_video_map['end'][index]
+            except:
+                end = None
+            self.del_entry_from_map(index)
+            text = f'Deleted entry for: {label}, from frame {frame} to {end}'
+            self.flag_label_map[label] = False
+        elif frame in self.label_video_map['end']:
+            index = self.label_video_map['end'].index(frame)
+            label = self.label_video_map['exercise'][index]
+            start = self.label_video_map['start'][index]
+            self.del_entry_from_map(index)
+            text = f'Deleted entry for: {label}, from frame {start} to {frame}'
+            self.flag_label_map[label] = False
+        else:
+            text = "No label found to be deleted."
+
+        self.label_text.set(text)
+
+    def del_entry_from_map(self, index):
+        del self.label_video_map['exercise'][index]
+        del self.label_video_map['start'][index]
+        try:
+            del self.label_video_map['end'][index]
+        except:
+            pass
+
+    def update_all(self):
+        self.update_headline()
+        self.update_frame()
+        self.update_label_text()
 
     def update_video(self):
         # Get a frame from the video source
-        self.update_headline()
-        self.update_frame()
+        self.update_all()
 
         if self.pause_flag:
             self.app.after(self.delay, self.update_video)
@@ -143,13 +184,27 @@ class LabelApp:
             self.canvas.create_image(0, 0, image=self.photo, anchor=tkinter.NW)
 
     def update_headline(self):
-        frame = self.cap.get_frame_num()
+        frame = self.cap.get_frame_num() + 1
         time = self.cap.get_time()
         update_str = (f'ID: {self.cap.yt_id}    '
                       f'Frame: {frame}/{self.cap.t_frames}   '
                       f'Time: {time}/{self.cap.t_time_str}   ')
-        # update_str = str(update_str)
         self.head_text.set(update_str)
+
+    def update_label_text(self):
+        frame = self.cap.get_frame_num()
+
+        if frame in self.label_video_map['start']:
+            index = self.label_video_map['start'].index(frame)
+            exercise = self.label_video_map['exercise'][index]
+            text = f'Start label: {exercise}'
+        elif frame in self.label_video_map['end']:
+            index = self.label_video_map['end'].index(frame)
+            exercise = self.label_video_map['exercise'][index]
+            text = f'End label: {exercise}'
+        else:
+            text = ""
+        self.label_text.set(text)
 
     def video_pause(self):
         if self.pause_flag:
@@ -160,13 +215,11 @@ class LabelApp:
 
     def video_forward(self, step):
         self.cap.forward(step - 1)
-        self.update_headline()
-        self.update_frame()
+        self.update_all()
 
     def video_backward(self, step):
         self.cap.backward(step + 1)
-        self.update_headline()
-        self.update_frame()
+        self.update_all()
 
     def save_json(self):
         filename = os.path.splitext(self.video_source)[0] + '.json'
@@ -179,7 +232,6 @@ class LabelApp:
 
         # Buttons to select
         self.label_text = tkinter.StringVar()
-        self.label_text.set("General")
         self.head_text = tkinter.StringVar()
         self.headline = tkinter.Label(self.app, textvariable=self.head_text,
                                       font=("Helvetica", 12))
@@ -202,6 +254,12 @@ class LabelApp:
                                         text=b_text,
                                         width=30,
                                         command=self.place_label)
+
+        b_text = f"Delete Label ({KEY_FUNC_MAP['delete']})"
+        self.btn_delete = tkinter.Button(self.app,
+                                         text=b_text,
+                                         width=30,
+                                         command=self.delete_label)
 
         self.label = tkinter.StringVar(self.app)
         self.label.set(LABELS[0])
@@ -248,6 +306,8 @@ class LabelApp:
         self.btn_quit.pack(
             side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
         self.btn_label.pack(
+            side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
+        self.btn_delete.pack(
             side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
         self.opt.pack(side=tkinter.TOP, anchor=tkinter.CENTER, expand=True)
         self.canvas.pack()
