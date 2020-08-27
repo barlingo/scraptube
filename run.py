@@ -4,6 +4,7 @@ Run python module
 """
 import argparse
 import scraptube
+import pathlib
 
 
 parser = argparse.ArgumentParser()
@@ -19,6 +20,8 @@ parser.add_argument("-l", "--label", type=str,
                     help="start labeling videos of specified folder")
 parser.add_argument("-n", "--number", action="store_true",
                     help="count the number of entries in all json files")
+parser.add_argument("-r", "--review", type=str,
+                    help="review the current datasets")
 args = parser.parse_args()
 
 MAIN_PATH = './output'
@@ -27,7 +30,7 @@ if args.search is None and args.download:
     print("Search required prior to download")
 
 if args.search is not None:
-    PATH = MAIN_PATH + args.search
+    PATH = MAIN_PATH + '\\' + args.search
     query = args.search + ", " + args.added_search
     yt_search = scraptube.search.YoutubeSearch(query)
     youtube_ids = yt_search.to_list()
@@ -38,18 +41,21 @@ if args.search is not None:
         extractor.merge_logs(args.search)
         extractor.purge_logs()
 
-if args.clean:
+elif args.clean:
     repeated_files = scraptube.clean.find_repeated_files(MAIN_PATH)
     scraptube.clean.delete_duplicated(repeated_files)
 
-if args.label:
+elif args.label:
     processor = scraptube.label.SubFolderProcessing(args.label)
     processor.label_videos()
 
-if args.number:
+elif args.number:
     import matplotlib.pyplot as plt
-    sum_entries = scraptube.label_count.count_all_labels(MAIN_PATH, "exercise")
+    sum_entries = scraptube.review.count_all_labels(MAIN_PATH, "exercise")
     plt.bar(list(sum_entries.keys()), sum_entries.values())
     plt.xticks(rotation=90)
     plt.subplots_adjust(bottom=0.302, top=0.98, right=0.98, left=0.06)
     plt.show()
+
+elif args.review:
+    scraptube.review.json_review(args.review)

@@ -3,6 +3,8 @@ Scraptube
 """
 import concurrent.futures
 from fnmatch import fnmatch
+import random
+import time
 import os
 import csv
 import pytube
@@ -105,6 +107,9 @@ class extractVideos(object):
 
     def download_video(self, youtube_id):
         try:
+
+            wait = random.randint(1, 100) / 100
+            time.sleep(wait)
             video = SourceVideo(youtube_id, self.path)
             video.download(self.path)
             try:

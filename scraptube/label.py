@@ -56,7 +56,7 @@ logger.debug(f"Detected labels: {LABELS}")
 class LabelApp:
     bar_width = 310
 
-    def __init__(self, app, app_title, video_source=0):
+    def __init__(self, app, app_title, video_source=0, dict_value=None):
         self.app = app
         self.app_title = app_title
         self.app.title(self.app_title)
@@ -68,10 +68,13 @@ class LabelApp:
         logger.info(f"{self.cap.yt_id} | Started App.")
         self.flag_label_map = {key: False for key in LABELS}
         self.pause_flag = True
-        self.label_video_map = {'video': self.video_source,
-                                'exercise': [],
-                                'start': [],
-                                'end': []}
+        if dict_value:
+            self.label_video_map = dict_value
+        else:
+            self.label_video_map = {'video': self.video_source,
+                                    'exercise': [],
+                                    'start': [],
+                                    'end': []}
 
         self.app.bind('<KeyPress>', self.on_key_press)
         self.__create_items()
@@ -81,6 +84,7 @@ class LabelApp:
         #  will be automatically called every delay milliseconds
         self.delay = 15
         self.update_video()
+        self.update_table()
         self.app.mainloop()
 
     def on_key_press(self, event):
@@ -205,12 +209,12 @@ class LabelApp:
             except IndexError:
                 pass
             try:
-                self.tree.delete(pos)
                 end = self.label_video_map['end'][pos]
+                self.tree.delete(pos)
             except IndexError:
                 end = ''
             except tkinter.TclError:
-                end = ''
+                pass
             values = (label, start, end)
             self.tree.insert("", pos, iid=pos, values=values)
 
